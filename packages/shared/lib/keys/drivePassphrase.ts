@@ -41,6 +41,11 @@ export const decryptPassphrase = async ({
         armoredSignature,
         sessionKeys: sessionKey,
         verificationKeys: publicKeys,
+        // Some old keys seem to have been generated with device time instead of server time,
+        // resulting in the signature having time in the future compared to them,
+        // thus failing verification
+        // @ts-ignore missing field in config declarations (TODO lara)
+        config: { allowInsecureVerificationWithReformattedKeys: true },
     });
 
     if (validateSignature && verified !== VERIFICATION_STATUS.SIGNED_AND_VALID) {

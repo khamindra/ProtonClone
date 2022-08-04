@@ -2,23 +2,23 @@ import { fromUnixTime, isAfter } from 'date-fns';
 import { c } from 'ttag';
 
 import { CryptoProxy, PrivateKeyReference, SessionKey, VERIFICATION_STATUS } from '@proton/crypto';
-import { base64StringToUint8Array } from '@proton/shared/lib/helpers/encoding';
 import { queryFileRevisionThumbnail } from '@proton/shared/lib/api/drive/files';
 import { queryGetLink } from '@proton/shared/lib/api/drive/link';
+import { base64StringToUint8Array } from '@proton/shared/lib/helpers/encoding';
 import { DriveFileRevisionThumbnailResult } from '@proton/shared/lib/interfaces/drive/file';
 import { LinkMetaResult } from '@proton/shared/lib/interfaces/drive/link';
 import { decryptSigned } from '@proton/shared/lib/keys/driveKeys';
 import { decryptPassphrase, getDecryptedSessionKey } from '@proton/shared/lib/keys/drivePassphrase';
 
-import { useDebouncedFunction } from '../_utils';
-import { useDebouncedRequest, linkMetaToEncryptedLink } from '../_api';
+import { linkMetaToEncryptedLink, useDebouncedRequest } from '../_api';
 import { useDriveCrypto } from '../_crypto';
 import { useShare } from '../_shares';
+import { useDebouncedFunction } from '../_utils';
+import { decryptExtendedAttributes } from './extendedAttributes';
+import { DecryptedLink, EncryptedLink, SignatureIssueLocation, SignatureIssues } from './interface';
+import { isDecryptedLinkSame } from './link';
 import useLinksKeys from './useLinksKeys';
 import useLinksState from './useLinksState';
-import { decryptExtendedAttributes } from './extendedAttributes';
-import { EncryptedLink, DecryptedLink, SignatureIssues, SignatureIssueLocation } from './interface';
-import { isDecryptedLinkSame } from './link';
 
 export default function useLink() {
     const linksKeys = useLinksKeys();
@@ -231,6 +231,11 @@ export function useLinkInner(
                     binaryData: sessionKey.data,
                     verificationKeys: publicKeys,
                     armoredSignature: encryptedLink.contentKeyPacketSignature,
+                    // Some old keys seem to have been generated with device time instead of server time,
+                    // resulting in the signature having time in the future compared to them,
+                    // thus failing verification
+                    // @ts-ignore missing field in config declarations (TODO lara)
+                    config: { allowInsecureVerificationWithReformattedKeys: true },
                 });
                 // iOS signed content key instead of session key in the past.
                 // Therefore we need to check that as well until we migrate
@@ -240,6 +245,11 @@ export function useLinkInner(
                         binaryData: blockKeys,
                         verificationKeys: publicKeys,
                         armoredSignature: encryptedLink.contentKeyPacketSignature,
+                        // Some old keys seem to have been generated with device time instead of server time,
+                        // resulting in the signature having time in the future compared to them,
+                        // thus failing verification
+                        // @ts-ignore missing field in config declarations (TODO lara)
+                        config: { allowInsecureVerificationWithReformattedKeys: true },
                     });
                     if (blockKeysVerified !== VERIFICATION_STATUS.SIGNED_AND_VALID) {
                         // If even fall back solution does not succeed, report

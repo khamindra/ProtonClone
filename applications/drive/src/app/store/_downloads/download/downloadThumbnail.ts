@@ -1,8 +1,9 @@
-import { ReadableStream } from 'web-streams-polyfill';
 // @ts-ignore missing `toStream` TS defs
 import { readToEnd, toStream } from '@openpgp/web-stream-tools';
+import { ReadableStream } from 'web-streams-polyfill';
 
 import { CryptoProxy, VERIFICATION_STATUS } from '@proton/crypto';
+
 import { streamToBuffer } from '../../../utils/stream';
 import { DecryptFileKeys } from '../interface';
 import downloadBlock from './downloadBlock';
@@ -32,6 +33,11 @@ async function decryptThumbnail(
         sessionKeys,
         verificationKeys: addressPublicKeys,
         format: 'binary',
+        // Some old keys seem to have been generated with device time instead of server time,
+        // resulting in the signature having time in the future compared to them,
+        // thus failing verification
+        // @ts-ignore missing field in config declarations (TODO lara)
+        config: { allowInsecureVerificationWithReformattedKeys: true },
     });
     return {
         data: toStream(data) as ReadableStream<Uint8Array>,

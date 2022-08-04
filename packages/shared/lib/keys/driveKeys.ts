@@ -1,9 +1,10 @@
-import { stringToUtf8Array, arrayToHexString } from '@proton/crypto/lib/utils';
 import { CryptoProxy, PrivateKeyReference, PublicKeyReference, SessionKey } from '@proton/crypto';
-import { ENCRYPTION_CONFIGS, ENCRYPTION_TYPES } from '../constants';
-import { generatePassphrase } from './calendarKeys';
+import { arrayToHexString, stringToUtf8Array } from '@proton/crypto/lib/utils';
+
 import { createSessionKey, getEncryptedSessionKey } from '../calendar/encrypt';
+import { ENCRYPTION_CONFIGS, ENCRYPTION_TYPES } from '../constants';
 import { uint8ArrayToBase64String } from '../helpers/encoding';
+import { generatePassphrase } from './calendarKeys';
 
 interface UnsignedEncryptionPayload {
     message: string | Uint8Array;
@@ -67,6 +68,11 @@ export const decryptSigned = async <F extends 'utf8' | 'binary' = 'utf8'>({
         decryptionKeys: privateKey,
         verificationKeys: publicKey,
         format,
+        // Some old keys seem to have been generated with device time instead of server time,
+        // resulting in the signature having time in the future compared to them,
+        // thus failing verification
+        // @ts-ignore missing field in config declarations (TODO lara)
+        config: { allowInsecureVerificationWithReformattedKeys: true },
     });
     return { data, verified };
 };

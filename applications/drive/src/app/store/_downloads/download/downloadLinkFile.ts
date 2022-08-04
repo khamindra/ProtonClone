@@ -42,6 +42,11 @@ export default function initDownloadLinkFile(link: LinkDownload, callbacks: Down
             sessionKeys: keys.sessionKeys,
             verificationKeys: keys.addressPublicKeys,
             format: 'binary',
+            // Some old keys seem to have been generated with device time instead of server time,
+            // resulting in the signature having time in the future compared to them,
+            // thus failing verification
+            // @ts-ignore missing field in config declarations (TODO lara)
+            config: { allowInsecureVerificationWithReformattedKeys: true },
         });
         return {
             data: toStream(data) as ReadableStream<Uint8Array>,
